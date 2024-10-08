@@ -4,7 +4,7 @@
 import * as assert from 'assert'
 import * as express from 'express'
 import * as q from 'q'
-import * as shortid from 'shortid'
+import { v4 as uuidv4 } from 'uuid'
 import Promise = q.Promise
 
 import { RedisManager, CacheableResponse } from '../script/redis-manager'
@@ -60,8 +60,8 @@ function redisTests() {
   })
 
   it('first cache request should return null', () => {
-    var expiryKey: string = 'test:' + shortid.generate()
-    var url: string = shortid.generate()
+    var expiryKey: string = 'test:' + uuidv4()
+    var url: string = uuidv4()
     return redisManager
       .getCachedResponse(expiryKey, url)
       .then((cacheResponse: CacheableResponse) => {
@@ -70,8 +70,8 @@ function redisTests() {
   })
 
   it('Should get cache request after setting it once', () => {
-    var expiryKey: string = 'test:' + shortid.generate()
-    var url: string = shortid.generate()
+    var expiryKey: string = 'test:' + uuidv4()
+    var url: string = uuidv4()
     expectedResponse.statusCode = 200
     expectedResponse.body = 'I am cached'
 
@@ -92,7 +92,7 @@ function redisTests() {
       .then((cacheResponse: CacheableResponse) => {
         assert.equal(cacheResponse.statusCode, expectedResponse.statusCode)
         assert.equal(cacheResponse.body, expectedResponse.body)
-        var newUrl: string = shortid.generate()
+        var newUrl: string = uuidv4()
         return redisManager.getCachedResponse(expiryKey, newUrl)
       })
       .then((cacheResponse: CacheableResponse) => {
@@ -101,8 +101,8 @@ function redisTests() {
   })
 
   it('should be able to invalidate cached request', () => {
-    var expiryKey: string = 'test:' + shortid.generate()
-    var url: string = shortid.generate()
+    var expiryKey: string = 'test:' + uuidv4()
+    var url: string = uuidv4()
     expectedResponse.statusCode = 200
     expectedResponse.body = 'I am cached'
 

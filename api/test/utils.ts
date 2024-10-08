@@ -5,8 +5,9 @@ import * as fs from 'fs'
 import * as http from 'http'
 import * as https from 'https'
 import { Promise } from 'q'
-import * as shortid from 'shortid'
 import * as stream from 'stream'
+import { v4 as uuidv4 } from 'uuid'
+
 
 import * as storage from '../script/storage/storage'
 import * as restTypes from '../script/types/rest-definitions'
@@ -19,39 +20,42 @@ export interface FileProps {
 }
 
 export function generateKey(): string {
-  return shortid.generate() + shortid.generate() // The REST API validates that keys must be at least 10 characters long
+  return uuidv4() + uuidv4() // The REST API validates that keys must be at least 10 characters long
 }
 
 export function makeAccount(): storage.Account {
-  var account: storage.Account = {
+  const account: storage.Account = {
     createdTime: new Date().getTime(),
     name: 'test account',
-    email: 'test_' + shortid.generate() + '@email.com',
+    email: 'test_' + uuidv4() + '@email.com',
   }
 
   return account
 }
 
 export function makeStorageAccessKey(): storage.AccessKey {
-  var now: number = new Date().getTime()
-  var friendlyName: string = shortid.generate()
-  var accessKey: storage.AccessKey = {
-    name: generateKey(),
+  const now: number = new Date().getTime()
+  const friendlyName: string = uuidv4()
+  const name = generateKey()
+  const accessKey: storage.AccessKey = {
+    name,
     createdTime: now,
     createdBy: 'test machine',
     friendlyName: friendlyName,
     description: friendlyName,
     expires: now + ACCESS_KEY_EXPIRY,
+    accessKey: name,
+    accountId: '',
   }
 
   return accessKey
 }
 
 export function makeAccessKeyRequest(): restTypes.AccessKeyRequest {
-  var accessKeyRequest: restTypes.AccessKeyRequest = {
+  const accessKeyRequest: restTypes.AccessKeyRequest = {
     name: generateKey(),
     createdBy: 'test machine',
-    friendlyName: shortid.generate(),
+    friendlyName: uuidv4(),
     ttl: ACCESS_KEY_EXPIRY,
   }
 
@@ -59,17 +63,17 @@ export function makeAccessKeyRequest(): restTypes.AccessKeyRequest {
 }
 
 export function makeStorageApp(): storage.App {
-  var app: storage.App = {
+  const app: storage.App = {
     createdTime: new Date().getDate(),
-    name: shortid.generate(),
+    name: uuidv4(),
   }
 
   return app
 }
 
 export function makeRestApp(): restTypes.App {
-  var app: restTypes.App = {
-    name: shortid.generate(),
+  const app: restTypes.App = {
+    name: uuidv4(),
     deployments: ['Production', 'Staging'],
   }
 
@@ -77,9 +81,9 @@ export function makeRestApp(): restTypes.App {
 }
 
 export function makeStorageDeployment(): storage.Deployment {
-  var deployment: storage.Deployment = {
+  const deployment: storage.Deployment = {
     createdTime: new Date().getDate(),
-    name: shortid.generate(),
+    name: uuidv4(),
     key: generateKey(),
   }
 
@@ -87,8 +91,8 @@ export function makeStorageDeployment(): storage.Deployment {
 }
 
 export function makeRestDeployment(): restTypes.Deployment {
-  var deployment: restTypes.Deployment = {
-    name: shortid.generate(),
+  const deployment: restTypes.Deployment = {
+    name: uuidv4(),
   }
 
   return deployment
@@ -100,7 +104,7 @@ export function makePackage(
   packageHash?: string,
   label?: string,
 ): storage.Package {
-  var storagePackage: storage.Package = {
+  const storagePackage: storage.Package = {
     blobUrl: 'testUrl.com',
     description: 'test blob id',
     isDisabled: false,
@@ -118,14 +122,14 @@ export function makePackage(
 }
 
 export function makeStreamFromString(stringValue: string): stream.Readable {
-  var blobStream = new stream.Readable()
+  const blobStream = new stream.Readable()
   blobStream.push(stringValue)
   blobStream.push(null)
   return blobStream
 }
 
 export function makeStringFromStream(stream: stream.Readable): Promise<string> {
-  var stringValue = ''
+  let stringValue = ''
   return Promise((resolve: (stringValue: string) => void) => {
     stream
       .on('data', (data: string) => {
@@ -145,14 +149,14 @@ export function getStreamAndSizeForFile(path: string): Promise<FileProps> {
         return
       }
 
-      var readable: fs.ReadStream = fs.createReadStream(path)
+      const readable: fs.ReadStream = fs.createReadStream(path)
       resolve({ stream: readable, size: stats.size })
     })
   })
 }
 
 export function retrieveStringContentsFromUrl(url: string): Promise<string> {
-  var protocol: typeof http | typeof https = null
+  let protocol: typeof http | typeof https = null
   if (url.indexOf('https://') === 0) {
     protocol = https
   } else {

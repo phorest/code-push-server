@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import * as q from 'q'
-import * as shortid from 'shortid'
+import { v4 as uuidv4 } from 'uuid'
 import * as stream from 'stream'
 import * as storage from './storage'
 import * as utils from '../utils/common'
@@ -188,7 +188,7 @@ export class AzureStorage implements storage.Storage {
   private _setupPromise: q.Promise<void>
 
   public constructor(accountName?: string, accountKey?: string) {
-    shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-')
+    // shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-')
 
     this._setupPromise = this.setup(accountName, accountKey)
   }
@@ -238,7 +238,7 @@ export class AzureStorage implements storage.Storage {
 
   public addAccount(account: storage.Account): q.Promise<string> {
     account = storage.clone(account) // pass by value
-    account.id = shortid.generate()
+    account.id = uuidv4()
 
     const hierarchicalAddress: Pointer = Keys.getAccountAddress(account.id)
     const emailShortcutAddress: Pointer = Keys.getEmailShortcutAddress(account.email)
@@ -335,7 +335,7 @@ export class AzureStorage implements storage.Storage {
 
   public addApp(accountId: string, app: storage.App): q.Promise<storage.App> {
     app = storage.clone(app) // pass by value
-    app.id = shortid.generate()
+    app.id = uuidv4()
 
     return this._setupPromise
       .then(() => {
@@ -566,7 +566,7 @@ export class AzureStorage implements storage.Storage {
     return this._setupPromise
       .then(() => {
         const flatDeployment: any = AzureStorage.flattenDeployment(deployment)
-        flatDeployment.id = shortid.generate()
+        flatDeployment.id = uuidv4()
 
         return this.insertByAppHierarchy(flatDeployment, appId, flatDeployment.id)
       })
@@ -828,7 +828,7 @@ export class AzureStorage implements storage.Storage {
 
   public addAccessKey(accountId: string, accessKey: storage.AccessKey): q.Promise<string> {
     accessKey = storage.clone(accessKey) // pass by value
-    accessKey.id = shortid.generate()
+    accessKey.id = uuidv4()
 
     return this._setupPromise
       .then(() => {

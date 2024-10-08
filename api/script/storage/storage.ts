@@ -38,17 +38,23 @@ export interface StorageError extends error.CodePushError {
  */
 export interface Account {
   azureAdId?: string
-  /*generated*/ createdTime: number
-  /*const*/ email: string
+  /*generated*/
+  createdTime: number
+  /*const*/
+  email: string
   gitHubId?: string
-  /*generated*/ id?: string
+  /*generated*/
+  id?: string
   microsoftId?: string
-  /*const*/ name: string
+  /*const*/
+  name: string
 }
 
 export interface CollaboratorProperties {
-  /*generated*/ accountId?: string
-  /*generated*/ isCurrentAccount?: boolean
+  /*generated*/
+  accountId?: string
+  /*generated*/
+  isCurrentAccount?: boolean
   permission: string
 }
 
@@ -57,17 +63,22 @@ export interface CollaboratorMap {
 }
 
 export interface App {
-  /*generated*/ collaborators?: CollaboratorMap
-  /*generated*/ createdTime: number
-  /*generated*/ id?: string
+  /*generated*/
+  collaborators?: CollaboratorMap
+  /*generated*/
+  createdTime: number
+  /*generated*/
+  id?: string
   accountId?: string
   deployments?: Deployment[]
   name: string
 }
 
 export interface Deployment {
-  /*generated*/ createdTime: number
-  /*generated*/ id?: string
+  /*generated*/
+  createdTime: number
+  /*generated*/
+  id?: string
   name: string
   key: string
   package?: Package
@@ -94,7 +105,8 @@ export interface Package {
   diffPackageMap?: PackageHashToBlobInfoMap
   isDisabled: boolean
   isMandatory: boolean
-  /*generated*/ label?: string
+  /*generated*/
+  label?: string
   manifestBlobUrl: string
   originalDeployment?: string // Set on "Promote"
   originalLabel?: string // Set on "Promote" and "Rollback"
@@ -110,11 +122,16 @@ export interface AccessKey {
   createdBy: string
   createdTime: number
   expires: number
-  /*legacy*/ description?: string
+  /*legacy*/
+  description?: string
   friendlyName: string
-  /*generated*/ id?: string
-  /*generated*/ isSession?: boolean
+  /*generated*/
+  id?: string
+  /*generated*/
+  isSession?: boolean
   name: string
+  accessKey: string
+  accountId: string
 }
 
 /**
@@ -131,27 +148,43 @@ export interface Storage {
   checkHealth(): Promise<void>
 
   addAccount(account: Account): Promise<string>
+
   getAccount(accountId: string): Promise<Account>
+
   getAccountByEmail(email: string): Promise<Account>
+
   getAccountIdFromAccessKey(accessKey: string): Promise<string>
+
   updateAccount(email: string, updates: Account): Promise<void>
 
   addApp(accountId: string, app: App): Promise<App>
+
   getApps(accountId: string): Promise<App[]>
+
   getApp(accountId: string, appId: string): Promise<App>
+
   removeApp(accountId: string, appId: string): Promise<void>
+
   transferApp(accountId: string, appId: string, email: string): Promise<void>
+
   updateApp(accountId: string, app: App): Promise<void>
 
   addCollaborator(accountId: string, appId: string, email: string): Promise<void>
+
   getCollaborators(accountId: string, appId: string): Promise<CollaboratorMap>
+
   removeCollaborator(accountId: string, appId: string, email: string): Promise<void>
 
   addDeployment(accountId: string, appId: string, deployment: Deployment): Promise<string>
+
   getDeployment(accountId: string, appId: string, deploymentId: string): Promise<Deployment>
+
   getDeploymentInfo(deploymentKey: string): Promise<DeploymentInfo>
+
   getDeployments(accountId: string, appId: string): Promise<Deployment[]>
+
   removeDeployment(accountId: string, appId: string, deploymentId: string): Promise<void>
+
   updateDeployment(accountId: string, appId: string, deployment: Deployment): Promise<void>
 
   commitPackage(
@@ -160,9 +193,13 @@ export interface Storage {
     deploymentId: string,
     appPackage: Package,
   ): Promise<Package>
+
   clearPackageHistory(accountId: string, appId: string, deploymentId: string): Promise<void>
+
   getPackageHistoryFromDeploymentKey(deploymentKey: string): Promise<Package[]>
+
   getPackageHistory(accountId: string, appId: string, deploymentId: string): Promise<Package[]>
+
   updatePackageHistory(
     accountId: string,
     appId: string,
@@ -171,13 +208,19 @@ export interface Storage {
   ): Promise<void>
 
   addBlob(blobId: string, addstream: stream.Readable, streamLength: number): Promise<string>
+
   getBlobUrl(blobId: string): Promise<string>
+
   removeBlob(blobId: string): Promise<void>
 
   addAccessKey(accountId: string, accessKey: AccessKey): Promise<string>
+
   getAccessKey(accountId: string, accessKeyId: string): Promise<AccessKey>
+
   getAccessKeys(accountId: string): Promise<AccessKey[]>
+
   removeAccessKey(accountId: string, accessKeyId: string): Promise<void>
+
   updateAccessKey(accountId: string, accessKey: AccessKey): Promise<void>
 
   dropAll(): Promise<void>
@@ -334,6 +377,7 @@ export class NameResolver {
     return this._storage
       .getAccessKeys(accountId)
       .then((accessKeys: AccessKey[]): AccessKey => {
+        console.log(accessKeys)
         const accessKey: AccessKey = NameResolver.findByName(accessKeys, name)
         if (!accessKey) throw storageError(ErrorCode.NotFound)
 

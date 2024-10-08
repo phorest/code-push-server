@@ -4,6 +4,7 @@
 import * as cookieSession from 'cookie-session'
 import { Request, Response, Router, RequestHandler } from 'express'
 import * as passport from 'passport'
+
 const passportActiveDirectory = require('passport-azure-ad')
 import * as passportBearer from 'passport-http-bearer'
 import * as passportGitHub from 'passport-github2'
@@ -112,11 +113,11 @@ export class PassportAuthentication {
     const router: Router = Router()
     const browserMessage: string =
       'Due to significant service improvements, your current CLI version is no longer supported.' +
-      "<br/>Please upgrade to the latest version by running 'npm install -g code-push-cli@latest'." +
+      '<br/>Please upgrade to the latest version by running \'npm install -g code-push-cli@latest\'.' +
       '<br/>Note that your end users will not be affected.'
     const cliMessage: string =
       'Due to significant service improvements, your current CLI version is no longer supported.' +
-      "\nPlease upgrade to the latest version by running 'npm install -g code-push-cli@latest'." +
+      '\nPlease upgrade to the latest version by running \'npm install -g code-push-cli@latest\'.' +
       '\nNote that your end users will not be affected.'
 
     // In legacy CLI's, all commands begin by passing through a /auth endpoint
@@ -318,8 +319,8 @@ export class PassportAuthentication {
         const emailAddress: string = PassportAuthentication.getEmailAddress(user)
         if (!emailAddress && providerName === PassportAuthentication.MICROSOFT_PROVIDER_NAME) {
           const message: string =
-            "You've successfully signed in your Microsoft account, but we couldn't get an email address from it." +
-            "<br/>Please fill the basic information (i.e. First/Last name, Email address) for your Microsoft account in case of absence, then try to run 'code-push-standalone login' again."
+            'You\'ve successfully signed in your Microsoft account, but we couldn\'t get an email address from it.' +
+            '<br/>Please fill the basic information (i.e. First/Last name, Email address) for your Microsoft account in case of absence, then try to run \'code-push-standalone login\' again.'
           restErrorUtils.sendForbiddenPage(res, message)
           return
         } else if (!emailAddress) {
@@ -338,14 +339,17 @@ export class PassportAuthentication {
         const issueAccessKey = (accountId: string): Promise<void> => {
           const now: number = new Date().getTime()
           const friendlyName: string = `Login-${now}`
+          const name = security.generateSecureKey(accountId)
           const accessKey: storage.AccessKey = {
-            name: security.generateSecureKey(accountId),
+            name: name,
             createdTime: now,
             createdBy: hostname || restHeaders.getIpAddress(req),
             description: friendlyName,
             expires: now + DEFAULT_SESSION_EXPIRY,
             friendlyName: friendlyName,
             isSession: true,
+            accessKey: name,
+            accountId,
           }
 
           return this._storageInstance
@@ -373,8 +377,8 @@ export class PassportAuthentication {
                   const message: string = isProviderValid
                     ? 'You are already registered with the service using this authentication provider.<br/>Please cancel the registration process (Ctrl-C) on the CLI and login with your account.'
                     : 'You are already registered with the service using a different authentication provider.' +
-                      '<br/>Please cancel the registration process (Ctrl-C) on the CLI and login with your registered account.' +
-                      '<br/>Once logged in, you can optionally link this provider to your account.'
+                    '<br/>Please cancel the registration process (Ctrl-C) on the CLI and login with your registered account.' +
+                    '<br/>Once logged in, you can optionally link this provider to your account.'
                   restErrorUtils.sendAlreadyExistsPage(res, message)
                   return
                 case 'link':
@@ -419,14 +423,14 @@ export class PassportAuthentication {
                 case 'login':
                   const message: string = PassportAuthentication.isAccountRegistrationEnabled()
                     ? 'Account not found.<br/>Have you registered with the CLI?<br/>If you are registered but your email address has changed, please contact us.'
-                    : "Account not found.<br/>Please <a href='http://microsoft.github.io/code-push/'>sign up for the beta</a>, and we will contact you when your account has been created!</a>"
+                    : 'Account not found.<br/>Please <a href=\'http://microsoft.github.io/code-push/\'>sign up for the beta</a>, and we will contact you when your account has been created!</a>'
                   restErrorUtils.sendForbiddenPage(res, message)
                   return
                 case 'link':
                   restErrorUtils.sendForbiddenPage(
                     res,
-                    "We weren't able to link your account, because the primary email address registered with your provider does not match the one on your CodePush account." +
-                      "<br/>Please use a matching email address, or contact us if you'd like to change the email address on your CodePush account.",
+                    'We weren\'t able to link your account, because the primary email address registered with your provider does not match the one on your CodePush account.' +
+                    '<br/>Please use a matching email address, or contact us if you\'d like to change the email address on your CodePush account.',
                   )
                   return
                 case 'register':

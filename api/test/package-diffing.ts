@@ -12,7 +12,7 @@ import * as http from 'http'
 import * as packageDiffing from '../script/utils/package-diffing'
 import * as path from 'path'
 import * as q from 'q'
-import * as shortid from 'shortid'
+import { v4 as uuidv4 } from 'uuid'
 import * as storage from '../script/storage/storage'
 import * as stream from 'stream'
 import * as utils from './utils'
@@ -517,7 +517,7 @@ function packageDiffTests(StorageType: new (...args: any[]) => storage.Storage):
       .then((packageHash: string) => {
         info.packageHash = packageHash
         var json: string = manifest.serialize()
-        return storage.addBlob(shortid.generate(), utils.makeStreamFromString(json), json.length)
+        return storage.addBlob(uuidv4(), utils.makeStreamFromString(json), json.length)
       })
       .then((blobId: string) => {
         return storage.getBlobUrl(blobId)
@@ -527,7 +527,7 @@ function packageDiffTests(StorageType: new (...args: any[]) => storage.Storage):
         return utils.getStreamAndSizeForFile(filePath)
       })
       .then((props: utils.FileProps) => {
-        return storage.addBlob(shortid.generate(), props.stream, props.size)
+        return storage.addBlob(uuidv4(), props.stream, props.size)
       })
       .then((blobId: string) => {
         return storage.getBlobUrl(blobId)

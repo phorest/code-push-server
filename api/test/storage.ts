@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import * as assert from 'assert'
-import * as shortid from 'shortid'
+import { v4 as uuidv4 } from 'uuid'
 import * as q from 'q'
 
 import { AzureStorage } from '../script/storage/azure-storage'
@@ -1074,7 +1074,7 @@ function storageTests(
           deployment.id = deploymentId
           var fileContents = 'test blob'
           return storage.addBlob(
-            shortid.generate(),
+            uuidv4(),
             utils.makeStreamFromString(fileContents),
             fileContents.length,
           )
@@ -1195,7 +1195,7 @@ function storageTests(
             .then(() => {
               var newPackage: storageTypes.Package = utils.makePackage()
               newPackage.blobUrl = blobUrl
-              newPackage.description = shortid.generate()
+              newPackage.description = uuidv4()
               expectedPackageHistory.push(newPackage)
               return storage.commitPackage(account.id, app.id, deployment.id, newPackage)
             })
@@ -1280,7 +1280,7 @@ function storageTests(
     it('can add a blob', () => {
       var fileContents = 'test stream'
       return storage
-        .addBlob(shortid.generate(), utils.makeStreamFromString(fileContents), fileContents.length)
+        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length)
         .then((blobId: string) => {
           assert(blobId)
         })
@@ -1289,7 +1289,7 @@ function storageTests(
     it('can get a blob url', () => {
       var fileContents = 'test stream'
       return storage
-        .addBlob(shortid.generate(), utils.makeStreamFromString(fileContents), fileContents.length)
+        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length)
         .then((blobId: string) => {
           return storage.getBlobUrl(blobId)
         })
@@ -1306,7 +1306,7 @@ function storageTests(
       var fileContents = 'test stream'
       var blobId: string
       return storage
-        .addBlob(shortid.generate(), utils.makeStreamFromString(fileContents), fileContents.length)
+        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length)
         .then((id: string) => {
           blobId = id
           return storage.removeBlob(blobId)

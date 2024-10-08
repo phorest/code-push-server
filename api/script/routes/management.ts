@@ -20,14 +20,14 @@ import * as semver from 'semver'
 import * as stream from 'stream'
 import * as streamifier from 'streamifier'
 import * as storageTypes from '../storage/storage'
+import { isPrototypePollutionKey } from '../storage/storage'
 import * as validationUtils from '../utils/validation'
-import PackageDiffer = packageDiffing.PackageDiffer
+import rateLimit from 'express-rate-limit'
+import tryJSON = require('try-json')
 import NameResolver = storageTypes.NameResolver
 import PackageManifest = hashUtils.PackageManifest
 import Promise = q.Promise
-import tryJSON = require('try-json')
-import rateLimit from 'express-rate-limit'
-import { isPrototypePollutionKey } from '../storage/storage'
+import PackageDiffer = packageDiffing.PackageDiffer
 
 const DEFAULT_ACCESS_KEY_EXPIRY = 1000 * 60 * 60 * 24 * 60 // 60 days
 const ACCESS_KEY_MASKING_STRING = '(hidden)'
@@ -82,8 +82,9 @@ export function getManagementRouter(config: ManagementConfig): Router {
         })
 
         // Hide the actual key string and replace it with a message for legacy CLIs (up to 1.11.0-beta) that still try to display it
-        accessKeys.forEach((accessKey: restTypes.AccessKey) => {
+        accessKeys.forEach((accessKey: storageTypes.AccessKey) => {
           accessKey.name = ACCESS_KEY_MASKING_STRING
+          accessKey.accessKey = ACCESS_KEY_MASKING_STRING
         })
 
         res.send({ accessKeys: accessKeys })
@@ -227,7 +228,7 @@ export function getManagementRouter(config: ManagementConfig): Router {
       nameResolver
         .resolveAccessKey(accountId, accessKeyName)
         .then((accessKey: storageTypes.AccessKey): Promise<void> => {
-          return storage.removeAccessKey(accountId, accessKey.id)
+          return storage.removeAccessKey(accountId, accessKey.name)
         })
         .then((): void => {
           res.sendStatus(204)
@@ -311,7 +312,7 @@ export function getManagementRouter(config: ManagementConfig): Router {
           if (NameResolver.isDuplicate(apps, appRequest.name)) {
             errorUtils.sendConflictError(
               res,
-              "An app named '" + appRequest.name + "' already exists.",
+              'An app named \'' + appRequest.name + '\' already exists.',
             )
             return
           }
@@ -432,7 +433,7 @@ export function getManagementRouter(config: ManagementConfig): Router {
 
         if ((app.name || app.name === '') && app.name !== existingApp.name) {
           if (NameResolver.isDuplicate(apps, app.name)) {
-            errorUtils.sendConflictError(res, "An app named '" + app.name + "' already exists.")
+            errorUtils.sendConflictError(res, 'An app named \'' + app.name + '\' already exists.')
             return
           }
 
@@ -629,7 +630,7 @@ export function getManagementRouter(config: ManagementConfig): Router {
           if (NameResolver.isDuplicate(deployments, restDeployment.name)) {
             errorUtils.sendConflictError(
               res,
-              "A deployment named '" + restDeployment.name + "' already exists.",
+              'A deployment named \'' + restDeployment.name + '\' already exists.',
             )
             return
           }
@@ -751,7 +752,7 @@ export function getManagementRouter(config: ManagementConfig): Router {
             if (NameResolver.isDuplicate(storageDeployments, restDeployment.name)) {
               errorUtils.sendConflictError(
                 res,
-                "A deployment named '" + restDeployment.name + "' already exists.",
+                'A deployment named \'' + restDeployment.name + '\' already exists.',
               )
               return
             }
@@ -971,7 +972,7 @@ export function getManagementRouter(config: ManagementConfig): Router {
             if (restPackage.packageHash === lastPackageHashWithSameAppVersion) {
               throw errorUtils.restError(
                 errorUtils.ErrorCode.Conflict,
-                "The uploaded package was not released because it is identical to the contents of the specified deployment's current release.",
+                'The uploaded package was not released because it is identical to the contents of the specified deployment\'s current release.',
               )
             }
 
@@ -1215,7 +1216,7 @@ export function getManagementRouter(config: ManagementConfig): Router {
           ) {
             throw errorUtils.restError(
               errorUtils.ErrorCode.Conflict,
-              "The uploaded package was not promoted because it is identical to the contents of the targeted deployment's current release.",
+              'The uploaded package was not promoted because it is identical to the contents of the targeted deployment\'s current release.',
             )
           }
 
