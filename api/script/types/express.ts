@@ -3,11 +3,11 @@
 
 declare namespace Express {
   export interface Session {
-    [key: string]: any;
+    [key: string]: any
   }
 
   export interface Request {
-    user: any;
-    session?: Session;
+    user: any
+    session?: Session
   }
 }

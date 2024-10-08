@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import * as errorModule from "../error";
-import * as storageTypes from "../storage/storage";
+import * as errorModule from '../error'
+import * as storageTypes from '../storage/storage'
 
 export enum ErrorCode {
   InvalidArguments = 0,
@@ -12,34 +12,40 @@ export enum ErrorCode {
 }
 
 export interface DiffError extends errorModule.CodePushError {
-  code: ErrorCode;
+  code: ErrorCode
 }
 
 export function diffError(errorCode: ErrorCode, message?: string): DiffError {
-  const diffError = <DiffError>errorModule.codePushError(errorModule.ErrorSource.Diffing, message);
-  diffError.code = errorCode;
-  return diffError;
+  const diffError = <DiffError>errorModule.codePushError(errorModule.ErrorSource.Diffing, message)
+  diffError.code = errorCode
+  return diffError
 }
 
 export function diffErrorHandler(error: any): any {
   if (error.source === errorModule.ErrorSource.Storage) {
-    let handledError: DiffError;
+    let handledError: DiffError
     switch (error.code) {
       case storageTypes.ErrorCode.NotFound:
-        handledError = diffError(ErrorCode.ProcessingFailed, "Unable to fetch data from storage, not found");
-        break;
+        handledError = diffError(
+          ErrorCode.ProcessingFailed,
+          'Unable to fetch data from storage, not found',
+        )
+        break
 
       case storageTypes.ErrorCode.ConnectionFailed:
-        handledError = diffError(ErrorCode.ConnectionFailed, "Error retrieving data from storage, connection failed.");
-        break;
+        handledError = diffError(
+          ErrorCode.ConnectionFailed,
+          'Error retrieving data from storage, connection failed.',
+        )
+        break
 
       default:
-        handledError = diffError(ErrorCode.Other, error.message || "Unknown error");
-        break;
+        handledError = diffError(ErrorCode.Other, error.message || 'Unknown error')
+        break
     }
 
-    throw handledError;
+    throw handledError
   } else {
-    throw error;
+    throw error
   }
 }

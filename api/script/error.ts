@@ -8,11 +8,11 @@ export enum ErrorSource {
 }
 
 export interface CodePushError extends Error {
-  source: ErrorSource;
+  source: ErrorSource
 }
 
 export function codePushError(source: ErrorSource, message?: string): CodePushError {
-  const error = <CodePushError>new Error(message);
-  error.source = source;
-  return error;
+  const error = <CodePushError>new Error(message)
+  error.source = source
+  return error
 }

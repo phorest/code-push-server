@@ -68,6 +68,7 @@
     "@typescript-eslint/parser": "^6.0.0",
     "dotenv": "^16.0.3",
     "eslint": "^8.45.0",
+    "eslint-config-prettier": "^9.1.0",
     "prettier": "^2.8.8",
     "rimraf": "^5.0.1",
     "shx": "^0.3.4",

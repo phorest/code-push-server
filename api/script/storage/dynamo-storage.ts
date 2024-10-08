@@ -1,108 +1,97 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import * as storage from "./storage";
-import { ErrorCode } from "./storage";
-import * as q from "q";
-import { Promise } from "q";
-import { Readable } from "stream";
-import { generate } from "shortid";
-import {
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import * as storage from './storage'
+import { ErrorCode } from './storage'
+import * as q from 'q'
+import { Promise } from 'q'
+import { Readable } from 'stream'
+import { generate } from 'shortid'
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 
 export class DynamoStorage implements storage.Storage {
-  private _dynamoClient: DynamoDBClient;
-  private _setupPromise: q.Promise<void>;
+  private _dynamoClient: DynamoDBClient
+  private _setupPromise: q.Promise<void>
 
   public constructor() {
-    this._setupPromise = this.setup();
+    this._setupPromise = this.setup()
   }
 
   private setup(): q.Promise<void> {
     const createDynamoClient = () => {
       this._dynamoClient = new DynamoDBClient({
-        region: "eu-west-1",
+        region: 'eu-west-1',
         credentials: {
           accessKeyId: process.env.AWS_ACCESS_KEY_ID,
           secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         },
-      });
-    };
+      })
+    }
 
-    return q.all([createDynamoClient()]).catch((e) => {
-      throw storage.storageError(
-        ErrorCode.ConnectionFailed,
-        "Dynamo Client initialization failed"
-      );
-    });
+    return q.all([createDynamoClient()]).catch(() => {
+      throw storage.storageError(ErrorCode.ConnectionFailed, 'Dynamo client initialization failed')
+    })
   }
 
   checkHealth(): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   addAccount(account: storage.Account): Promise<string> {
     return this._setupPromise
       .then(async () => {
-        account = storage.clone(account); // pass by value
-        account.id = generate();
+        account = storage.clone(account) // pass by value
+        account.id = generate()
         await this._dynamoClient.send(
           new PutCommand({
-            TableName: "code-push-accounts",
+            TableName: 'code-push-accounts',
             Item: account,
-          })
-        );
-        return account.id;
+          }),
+        )
+        return account.id
       })
       .catch(() => {
-        throw storage.storageError(
-          ErrorCode.AlreadyExists,
-          "Account already exists"
-        );
-      });
+        throw storage.storageError(ErrorCode.AlreadyExists, 'Account already exists')
+      })
   }
 
   getAccount(accountId: string): Promise<storage.Account> {
     return this._setupPromise.then(async () => {
       const response = await this._dynamoClient.send(
         new QueryCommand({
-          TableName: "code-push-accounts",
-          IndexName: "id-index",
-          KeyConditionExpression: "#id = :id",
+          TableName: 'code-push-accounts',
+          IndexName: 'id-index',
+          KeyConditionExpression: '#id = :id',
           ExpressionAttributeNames: {
-            "#id": "id",
+            '#id': 'id',
           },
           ExpressionAttributeValues: {
-            ":id": accountId,
+            ':id': accountId,
           },
-        })
-      );
+        }),
+      )
       if (response.Items) {
-        return response.Items[0] as storage.Account;
+        return response.Items[0] as storage.Account
       } else {
-        throw storage.storageError(ErrorCode.NotFound, "Account not found");
+        throw storage.storageError(ErrorCode.NotFound, 'Account not found')
       }
-    });
+    })
   }
 
   getAccountByEmail(email: string): Promise<storage.Account> {
     return this._setupPromise.then(async () => {
       const response = await this._dynamoClient.send(
         new GetCommand({
-          TableName: "code-push-accounts",
+          TableName: 'code-push-accounts',
           Key: {
             email: email,
           },
-        })
-      );
+        }),
+      )
       if (response.Item) {
-        return response.Item as storage.Account;
+        return response.Item as storage.Account
       } else {
-        throw storage.storageError(ErrorCode.NotFound, "Account not found");
+        throw storage.storageError(ErrorCode.NotFound, 'Account not found')
       }
-    });
+    })
   }
 
   getAccountIdFromAccessKey(accessKey: string): Promise<string> {
@@ -110,57 +99,54 @@ export class DynamoStorage implements storage.Storage {
       .then(async () => {
         const response = await this._dynamoClient.send(
           new GetCommand({
-            TableName: "code-push-access-keys",
+            TableName: 'code-push-access-keys',
             Key: {
               accessKey,
             },
-          })
-        );
+          }),
+        )
         if (response.Item) {
-          return response.Item.accountId;
+          return response.Item.accountId
         }
       })
       .catch(() => {
-        throw storage.storageError(ErrorCode.NotFound, "Access key not found");
-      });
+        throw storage.storageError(ErrorCode.NotFound, 'Access key not found')
+      })
   }
 
   updateAccount(email: string, updates: storage.Account): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   addApp(accountId: string, app: storage.App): Promise<storage.App> {
     return this._setupPromise
       .then(async () => {
-        app = storage.clone(app); // pass by value
-        app.id = generate();
-        app.accountId = accountId;
-        app.deployments = [];
+        app = storage.clone(app) // pass by value
+        app.id = generate()
+        app.accountId = accountId
+        app.deployments = []
 
-        const account = await this.getAccount(accountId);
+        const account = await this.getAccount(accountId)
 
-        const collaboratorMap: storage.CollaboratorMap = {};
+        const collaboratorMap: storage.CollaboratorMap = {}
         collaboratorMap[account.email] = {
           accountId: accountId,
           permission: storage.Permissions.Owner,
           isCurrentAccount: true,
-        } as storage.CollaboratorProperties;
+        } as storage.CollaboratorProperties
 
-        app.collaborators = collaboratorMap;
+        app.collaborators = collaboratorMap
         await this._dynamoClient.send(
           new PutCommand({
-            TableName: "code-push-apps",
+            TableName: 'code-push-apps',
             Item: app,
-          })
-        );
-        return app;
+          }),
+        )
+        return app
       })
       .catch(() => {
-        throw storage.storageError(
-          ErrorCode.AlreadyExists,
-          "App already exists"
-        );
-      });
+        throw storage.storageError(ErrorCode.AlreadyExists, 'App already exists')
+      })
   }
 
   getApps(accountId: string): Promise<storage.App[]> {
@@ -168,369 +154,318 @@ export class DynamoStorage implements storage.Storage {
       .then(async () => {
         const response = await this._dynamoClient.send(
           new QueryCommand({
-            TableName: "code-push-apps",
-            IndexName: "accountId-index",
-            KeyConditionExpression: "#accountId = :accountId",
+            TableName: 'code-push-apps',
+            IndexName: 'accountId-index',
+            KeyConditionExpression: '#accountId = :accountId',
             ExpressionAttributeNames: {
-              "#accountId": "accountId",
+              '#accountId': 'accountId',
             },
             ExpressionAttributeValues: {
-              ":accountId": accountId,
+              ':accountId': accountId,
             },
-          })
-        );
+          }),
+        )
         if (response.Items) {
-          return response.Items as storage.App[];
+          return response.Items as storage.App[]
         } else {
-          throw storage.storageError(ErrorCode.Other, "Could not get apps");
+          throw storage.storageError(ErrorCode.Other, 'Could not get apps')
         }
       })
       .catch(() => {
-        throw storage.storageError(ErrorCode.Other, "Could not get apps");
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not get apps')
+      })
   }
 
   getApp(accountId: string, appId: string): Promise<storage.App> {
     return this._setupPromise
       .then(async () => {
-        const apps = await this.getApps(accountId);
-        return apps.find((app) => app.id === appId);
+        const apps = await this.getApps(accountId)
+        return apps.find((app) => app.id === appId)
       })
       .catch(() => {
-        throw storage.storageError(ErrorCode.Other, "Could not get app");
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not get app')
+      })
   }
 
   removeApp(accountId: string, appId: string): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   transferApp(accountId: string, appId: string, email: string): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   updateApp(accountId: string, app: storage.App): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
-  addCollaborator(
-    accountId: string,
-    appId: string,
-    email: string
-  ): Promise<void> {
+  addCollaborator(accountId: string, appId: string, email: string): Promise<void> {
     return this._setupPromise
       .then(async () => {
-        const app = await this.getApp(accountId, appId);
-        const account = await this.getAccountByEmail(email);
+        const app = await this.getApp(accountId, appId)
+        const account = await this.getAccountByEmail(email)
         const collaboratorMap: storage.CollaboratorMap = {
           ...app.collaborators,
-        };
+        }
         collaboratorMap[email] = {
           accountId: account.id,
           permission: storage.Permissions.Collaborator,
           isCurrentAccount: true,
-        } as storage.CollaboratorProperties;
+        } as storage.CollaboratorProperties
 
         await this._dynamoClient.send(
           new UpdateCommand({
-            TableName: "code-push-apps",
+            TableName: 'code-push-apps',
             Key: {
               id: app.id,
             },
-            UpdateExpression: "set collaborators = :collaborator",
+            UpdateExpression: 'set collaborators = :collaborator',
             ExpressionAttributeValues: {
-              ":collaborator": collaboratorMap,
+              ':collaborator': collaboratorMap,
             },
-            ReturnValues: "ALL_NEW",
-          })
-        );
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
       })
       .catch((e) => {
-        console.log(e);
-        throw storage.storageError(
-          ErrorCode.Other,
-          "Could not add collaborators"
-        );
-      });
+        console.log(e)
+        throw storage.storageError(ErrorCode.Other, 'Could not add collaborators')
+      })
   }
 
-  getCollaborators(
-    accountId: string,
-    appId: string
-  ): Promise<storage.CollaboratorMap> {
+  getCollaborators(accountId: string, appId: string): Promise<storage.CollaboratorMap> {
     return this._setupPromise
       .then(async () => {
-        const apps = await this.getApps(accountId);
-        return apps.find((app) => app.id === appId).collaborators;
+        const apps = await this.getApps(accountId)
+        return apps.find((app) => app.id === appId).collaborators
       })
       .catch(() => {
-        throw storage.storageError(
-          ErrorCode.Other,
-          "Could not get collaborators"
-        );
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not get collaborators')
+      })
   }
 
-  removeCollaborator(
-    accountId: string,
-    appId: string,
-    email: string
-  ): Promise<void> {
-    throw new Error("Method not implemented.");
+  removeCollaborator(accountId: string, appId: string, email: string): Promise<void> {
+    throw new Error('Method not implemented.')
   }
 
-  addDeployment(
-    accountId: string,
-    appId: string,
-    deployment: storage.Deployment
-  ): Promise<string> {
+  addDeployment(accountId: string, appId: string, deployment: storage.Deployment): Promise<string> {
     return this._setupPromise
       .then(async () => {
-        const app = await this.getApp(accountId, appId);
+        const app = await this.getApp(accountId, appId)
         await this._dynamoClient.send(
           new UpdateCommand({
-            TableName: "code-push-apps",
+            TableName: 'code-push-apps',
             Key: {
               id: app.id,
             },
-            UpdateExpression:
-              "set deployments = list_append(deployments, :deployment)",
+            UpdateExpression: 'set deployments = list_append(deployments, :deployment)',
             ExpressionAttributeValues: {
-              ":deployment": [deployment],
+              ':deployment': [deployment],
             },
-            ReturnValues: "ALL_NEW",
-          })
-        );
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
       })
       .catch(() => {
-        throw storage.storageError(ErrorCode.Other, "Could not add deployment");
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not add deployment')
+      })
   }
 
   getDeployment(
     accountId: string,
     appId: string,
-    deploymentId: string
+    deploymentId: string,
   ): Promise<storage.Deployment> {
     return this._setupPromise
       .then(async () => {
-        const deployments = await this.getDeployments(accountId, appId);
-        return deployments.find((deployment) => deployment.id === deploymentId);
+        const deployments = await this.getDeployments(accountId, appId)
+        return deployments.find((deployment) => deployment.id === deploymentId)
       })
       .catch(() => {
-        throw storage.storageError(ErrorCode.Other, "Could not get deployment");
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not get deployment')
+      })
   }
 
   getDeploymentInfo(deploymentKey: string): Promise<storage.DeploymentInfo> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
-  getDeployments(
-    accountId: string,
-    appId: string
-  ): Promise<storage.Deployment[]> {
+  getDeployments(accountId: string, appId: string): Promise<storage.Deployment[]> {
     return this._setupPromise.then(async () => {
       const response = await this._dynamoClient.send(
         new GetCommand({
-          TableName: "code-push-apps",
+          TableName: 'code-push-apps',
           Key: {
             id: appId,
           },
-        })
-      );
+        }),
+      )
       if (response.Item) {
-        return response.Item.deployments as storage.Deployment[];
+        return response.Item.deployments as storage.Deployment[]
       } else {
-        throw storage.storageError(ErrorCode.NotFound, "Deployment not found");
+        throw storage.storageError(ErrorCode.NotFound, 'Deployment not found')
       }
-    });
+    })
   }
 
-  removeDeployment(
-    accountId: string,
-    appId: string,
-    deploymentId: string
-  ): Promise<void> {
-    throw new Error("Method not implemented.");
+  removeDeployment(accountId: string, appId: string, deploymentId: string): Promise<void> {
+    throw new Error('Method not implemented.')
   }
 
   updateDeployment(
     accountId: string,
     appId: string,
-    deployment: storage.Deployment
+    deployment: storage.Deployment,
   ): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   commitPackage(
     accountId: string,
     appId: string,
     deploymentId: string,
-    appPackage: storage.Package
+    appPackage: storage.Package,
   ): Promise<storage.Package> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
-  clearPackageHistory(
-    accountId: string,
-    appId: string,
-    deploymentId: string
-  ): Promise<void> {
-    throw new Error("Method not implemented.");
+  clearPackageHistory(accountId: string, appId: string, deploymentId: string): Promise<void> {
+    throw new Error('Method not implemented.')
   }
 
-  getPackageHistoryFromDeploymentKey(
-    deploymentKey: string
-  ): Promise<storage.Package[]> {
-    throw new Error("Method not implemented.");
+  getPackageHistoryFromDeploymentKey(deploymentKey: string): Promise<storage.Package[]> {
+    throw new Error('Method not implemented.')
   }
 
   getPackageHistory(
     accountId: string,
     appId: string,
-    deploymentId: string
+    deploymentId: string,
   ): Promise<storage.Package[]> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   updatePackageHistory(
     accountId: string,
     appId: string,
     deploymentId: string,
-    history: storage.Package[]
+    history: storage.Package[],
   ): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
-  addBlob(
-    blobId: string,
-    addstream: Readable,
-    streamLength: number
-  ): Promise<string> {
-    throw new Error("Method not implemented.");
+  addBlob(blobId: string, addstream: Readable, streamLength: number): Promise<string> {
+    throw new Error('Method not implemented.')
   }
 
   getBlobUrl(blobId: string): Promise<string> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
   removeBlob(blobId: string): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
-  addAccessKey(
-    accountId: string,
-    accessKey: storage.AccessKey
-  ): Promise<string> {
+  addAccessKey(accountId: string, accessKey: storage.AccessKey): Promise<string> {
     return this._setupPromise
       .then(async () => {
         const response = await this._dynamoClient.send(
           new QueryCommand({
-            TableName: "code-push-accounts",
-            IndexName: "id-index",
-            KeyConditionExpression: "#id = :id",
+            TableName: 'code-push-accounts',
+            IndexName: 'id-index',
+            KeyConditionExpression: '#id = :id',
             ExpressionAttributeNames: {
-              "#id": "id",
+              '#id': 'id',
             },
             ExpressionAttributeValues: {
-              ":id": accountId,
+              ':id': accountId,
             },
-          })
-        );
+          }),
+        )
 
         await this._dynamoClient.send(
           new UpdateCommand({
-            TableName: "code-push-accounts",
+            TableName: 'code-push-accounts',
             Key: {
               email: response.Items[0].email,
             },
-            UpdateExpression: "set #accessKey = :accessKey",
+            UpdateExpression: 'set #accessKey = :accessKey',
             ExpressionAttributeNames: {
-              "#accessKey": "accessKey",
+              '#accessKey': 'accessKey',
             },
             ExpressionAttributeValues: {
-              ":accessKey": accessKey.name,
+              ':accessKey': accessKey.name,
             },
-            ReturnValues: "ALL_NEW",
-          })
-        );
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
 
         // Create a new object, or we will actually remove the access key name from the original object which is needed to display the access key
-        const newAccessKey = {};
+        const newAccessKey = {}
         delete Object.assign(newAccessKey, accessKey, {
-          ["accessKey"]: accessKey["name"],
-        })["name"];
+          ['accessKey']: accessKey['name'],
+        })['name']
         Object.assign(newAccessKey, {
-          ["accountId"]: accountId,
-        });
+          ['accountId']: accountId,
+        })
         await this._dynamoClient.send(
           new PutCommand({
-            TableName: "code-push-access-keys",
+            TableName: 'code-push-access-keys',
             Item: newAccessKey,
-          })
-        );
+          }),
+        )
       })
       .catch(() => {
-        throw storage.storageError(ErrorCode.Other, "Could not add access key");
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not add access key')
+      })
   }
 
   getAccessKey(
     accountId: string,
-    accessKeyId: string // unused
+    accessKeyId: string, // unused
   ): Promise<storage.AccessKey> {
     return this._setupPromise
       .then(async () => {
         const response = await this._dynamoClient.send(
           new QueryCommand({
-            TableName: "code-push-accounts",
-            IndexName: "id-index",
-            KeyConditionExpression: "#id = :id",
+            TableName: 'code-push-accounts',
+            IndexName: 'id-index',
+            KeyConditionExpression: '#id = :id',
             ExpressionAttributeNames: {
-              "#id": "id",
+              '#id': 'id',
             },
             ExpressionAttributeValues: {
-              ":id": accountId,
+              ':id': accountId,
             },
-          })
-        );
-        return response.Items[0].accessKey;
+          }),
+        )
+        return response.Items[0].accessKey
       })
       .catch((e) => {
-        throw storage.storageError(
-          ErrorCode.Other,
-          "Could not get access keys"
-        );
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not get access keys')
+      })
   }
 
   getAccessKeys(accountId: string): Promise<storage.AccessKey[]> {
     return this._setupPromise
       .then(async () => {
-        const accessKey = await this.getAccessKey(accountId, "" /* unused */);
-        return [accessKey];
+        const accessKey = await this.getAccessKey(accountId, '' /* unused */)
+        return [accessKey]
       })
       .catch(() => {
-        throw storage.storageError(
-          ErrorCode.Other,
-          "Could not get access keys"
-        );
-      });
+        throw storage.storageError(ErrorCode.Other, 'Could not get access keys')
+      })
   }
 
   removeAccessKey(accountId: string, accessKeyId: string): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 
-  updateAccessKey(
-    accountId: string,
-    accessKey: storage.AccessKey
-  ): Promise<void> {
-    throw new Error("Method not implemented.");
+  updateAccessKey(accountId: string, accessKey: storage.AccessKey): Promise<void> {
+    throw new Error('Method not implemented.')
   }
 
   dropAll(): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.')
   }
 }
