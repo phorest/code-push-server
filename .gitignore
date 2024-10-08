@@ -45,3 +45,5 @@ JsonStorage.json
 *.pem
 *.key
 *.cnf
+
+.idea

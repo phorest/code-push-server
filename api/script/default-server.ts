@@ -1,25 +1,15 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-
 import * as api from "./api";
 import { AzureStorage } from "./storage/azure-storage";
 import { fileUploadMiddleware } from "./file-upload-manager";
-import { JsonStorage } from "./storage/json-storage";
 import { RedisManager } from "./redis-manager";
 import { Storage } from "./storage/storage";
-import { Response } from "express";
-const { DefaultAzureCredential } = require("@azure/identity");
-const { SecretClient } = require("@azure/keyvault-secrets");
-
-import * as bodyParser from "body-parser";
-const domain = require("express-domain-middleware");
 import * as express from "express";
+import { Response } from "express";
+import * as bodyParser from "body-parser";
 import * as q from "q";
+import { DynamoStorage } from "./storage/dynamo-storage";
 
-interface Secret {
-  id: string;
-  value: string;
-}
+const domain = require("express-domain-middleware");
 
 function bodyParserErrorHandler(err: any, req: express.Request, res: express.Response, next: Function): void {
   if (err) {
@@ -41,22 +31,7 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
 
   q<void>(null)
     .then(async () => {
-      if (useJsonStorage) {
-        storage = new JsonStorage();
-      } else if (!process.env.AZURE_KEYVAULT_ACCOUNT) {
-        storage = new AzureStorage();
-      } else {
-        isKeyVaultConfigured = true;
-
-        const credential = new DefaultAzureCredential();
-
-        const vaultName = process.env.AZURE_KEYVAULT_ACCOUNT;
-        const url = `https://${vaultName}.vault.azure.net`;
-
-        const keyvaultClient = new SecretClient(url, credential);
-        const secret = await keyvaultClient.getSecret(`storage-${process.env.AZURE_STORAGE_ACCOUNT}`);
-        storage = new AzureStorage(process.env.AZURE_STORAGE_ACCOUNT, secret);
-      }
+      storage = new DynamoStorage();
     })
     .then(() => {
       const app = express();

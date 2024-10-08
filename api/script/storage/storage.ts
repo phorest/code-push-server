@@ -60,6 +60,8 @@ export interface App {
   /*generated*/ collaborators?: CollaboratorMap;
   /*generated*/ createdTime: number;
   /*generated*/ id?: string;
+  accountId?: string;
+  deployments?: Deployment[];
   name: string;
 }
 
