@@ -218,14 +218,57 @@ export class DynamoStorage implements storage.Storage {
     appId: string,
     email: string
   ): Promise<void> {
-    throw new Error("Method not implemented.");
+    return this._setupPromise
+      .then(async () => {
+        const app = await this.getApp(accountId, appId);
+        const account = await this.getAccountByEmail(email);
+        const collaboratorMap: storage.CollaboratorMap = {
+          ...app.collaborators,
+        };
+        collaboratorMap[email] = {
+          accountId: account.id,
+          permission: storage.Permissions.Collaborator,
+          isCurrentAccount: true,
+        } as storage.CollaboratorProperties;
+
+        await this._dynamoClient.send(
+          new UpdateCommand({
+            TableName: "code-push-apps",
+            Key: {
+              id: app.id,
+            },
+            UpdateExpression: "set collaborators = :collaborator",
+            ExpressionAttributeValues: {
+              ":collaborator": collaboratorMap,
+            },
+            ReturnValues: "ALL_NEW",
+          })
+        );
+      })
+      .catch((e) => {
+        console.log(e);
+        throw storage.storageError(
+          ErrorCode.Other,
+          "Could not add collaborators"
+        );
+      });
   }
 
   getCollaborators(
     accountId: string,
     appId: string
   ): Promise<storage.CollaboratorMap> {
-    throw new Error("Method not implemented.");
+    return this._setupPromise
+      .then(async () => {
+        const apps = await this.getApps(accountId);
+        return apps.find((app) => app.id === appId).collaborators;
+      })
+      .catch(() => {
+        throw storage.storageError(
+          ErrorCode.Other,
+          "Could not get collaborators"
+        );
+      });
   }
 
   removeCollaborator(
