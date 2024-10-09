@@ -269,7 +269,27 @@ export class DynamoStorage implements Storage {
   }
 
   removeCollaborator(accountId: string, appId: string, email: string): Promise<void> {
-    throw new Error('Method not implemented.')
+    return this._setupPromise
+      .then(async () => {
+        const collaboratorMap = await this.getCollaborators(accountId, appId)
+        delete collaboratorMap[email]
+        await this._dynamoClient.send(
+          new UpdateCommand({
+            TableName: 'code-push-apps',
+            Key: {
+              id: appId,
+            },
+            UpdateExpression: 'set collaborators = :collaborator',
+            ExpressionAttributeValues: {
+              ':collaborator': collaboratorMap,
+            },
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+      })
+      .catch(() => {
+        throw storageError(ErrorCode.Other, 'Could not delete collaborator')
+      })
   }
 
   addDeployment(accountId: string, appId: string, deployment: Deployment): Promise<string> {
