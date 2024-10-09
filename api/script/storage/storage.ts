@@ -118,6 +118,12 @@ export interface Package {
   uploadTime: number
 }
 
+export interface PackageHistory {
+  deploymentId: string
+  deploymentKey: string
+  packages: Package[]
+}
+
 export interface AccessKey {
   createdBy: string
   createdTime: number
@@ -207,9 +213,9 @@ export interface Storage {
     history: Package[],
   ): Promise<void>
 
-  addBlob(blobId: string, addstream: stream.Readable, streamLength: number): Promise<string>
+  addBlob(blobId: string, addstream: stream.Readable, streamLength: number, appId: string, deploymentId: string): Promise<string>
 
-  getBlobUrl(blobId: string): Promise<string>
+  getBlobUrl(blobId: string, appId: string, deploymentId: string): Promise<string>
 
   removeBlob(blobId: string): Promise<void>
 

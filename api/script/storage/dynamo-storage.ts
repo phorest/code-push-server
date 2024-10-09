@@ -1,45 +1,100 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import * as storage from './storage'
 import {
-  clone,
-  App,
-  Account,
-  Deployment,
-  ErrorCode,
-  Package,
-  storageError,
   AccessKey,
+  Account,
+  App,
+  clone,
   CollaboratorMap,
   CollaboratorProperties,
+  Deployment,
+  DeploymentInfo,
+  ErrorCode,
+  Package,
+  PackageHistory,
   Permissions,
-  Storage, DeploymentInfo,
+  Storage,
+  storageError,
 } from './storage'
 import * as q from 'q'
 import { Promise } from 'q'
 import { Readable } from 'stream'
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
-import { v4 as uuidv4 } from 'uuid';
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { v4 as uuidv4 } from 'uuid'
+import { Upload } from '@aws-sdk/lib-storage'
+import { S3Client } from '@aws-sdk/client-s3'
+import { PassThrough } from 'node:stream'
 
 export class DynamoStorage implements Storage {
   private _dynamoClient: DynamoDBClient
+  private _s3Client: S3Client
   private _setupPromise: q.Promise<void>
+  private static REGION = 'eu-west-1'
 
   public constructor() {
     this._setupPromise = this.setup()
   }
 
   private setup(): q.Promise<void> {
+    const credentials = {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    }
+
     const createDynamoClient = () => {
       this._dynamoClient = new DynamoDBClient({
-        region: 'eu-west-1',
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
+        region: DynamoStorage.REGION,
+        credentials,
       })
     }
 
-    return q.all([createDynamoClient()]).catch(() => {
-      throw storageError(ErrorCode.ConnectionFailed, 'Dynamo client initialization failed')
+    const createS3Client = () => {
+      this._s3Client = new S3Client({
+        region: DynamoStorage.REGION,
+        credentials,
+      })
+    }
+
+    return q.all([createDynamoClient(), createS3Client()]).catch(() => {
+      throw storageError(ErrorCode.ConnectionFailed, 'Client initialization failed')
+    })
+  }
+
+  private getNextLabel(packageHistory: storage.Package[]): string {
+    if (packageHistory.length === 0) {
+      return 'v1'
+    }
+
+    const lastLabel: string = packageHistory[packageHistory.length - 1].label
+    const lastVersion: number = parseInt(lastLabel.substring(1)) // Trim 'v' from the front
+    return 'v' + (lastVersion + 1)
+  }
+
+  private getS3Url(appName: string, deploymentName: string, blobId: string, withHostName: boolean): string {
+    const key = `${appName}/${deploymentName}/${blobId}`
+    return withHostName ? `https://code-push-bundles.s3-${DynamoStorage.REGION}.amazonaws.com/${key}` : key
+  }
+
+  private getAppAndDeploymentNames(appId: string, deploymentId: string): Promise<{
+    appName: string,
+    deploymentName: string
+  }> {
+    return this._setupPromise.then(async () => {
+      const response = await this._dynamoClient.send(
+        new GetCommand({
+          TableName: 'code-push-apps',
+          Key: {
+            id: appId,
+          },
+        }),
+      )
+      if (response.Item) {
+        const appName: string = response.Item.name
+        const deploymentName: string = response.Item.deployments.find((deployment: Deployment) => deployment.id === deploymentId).name
+        return { appName, deploymentName }
+      } else {
+        throw storageError(ErrorCode.NotFound, 'App not found')
+      }
     })
   }
 
@@ -311,6 +366,17 @@ export class DynamoStorage implements Storage {
             ReturnValues: 'ALL_NEW',
           }),
         )
+        const packageHistory: PackageHistory = {
+          deploymentId: deployment.id,
+          deploymentKey: deployment.key,
+          packages: [],
+        }
+        await this._dynamoClient.send(
+          new PutCommand({
+            TableName: 'code-push-packages',
+            Item: packageHistory,
+          }),
+        )
       })
       .catch(() => {
         throw storageError(ErrorCode.Other, 'Could not add deployment')
@@ -392,15 +458,78 @@ export class DynamoStorage implements Storage {
     deploymentId: string,
     appPackage: Package,
   ): Promise<Package> {
-    throw new Error('Method not implemented.')
+    return this._setupPromise
+      .then(async () => {
+        const packages = await this.getPackageHistory(accountId, appId, deploymentId)
+        appPackage = clone(appPackage)
+        appPackage.label = this.getNextLabel(packages)
+        await this._dynamoClient.send(
+          new UpdateCommand({
+            TableName: 'code-push-packages',
+            Key: {
+              deploymentId,
+            },
+            UpdateExpression: 'set packages = :packages',
+            ExpressionAttributeValues: {
+              ':packages': [appPackage, ...packages],
+            },
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+        return appPackage
+      })
+      .catch(() => {
+        throw storageError(ErrorCode.Other, 'Could not add package')
+      })
   }
 
   clearPackageHistory(accountId: string, appId: string, deploymentId: string): Promise<void> {
-    throw new Error('Method not implemented.')
+    return this._setupPromise
+      .then(async () => {
+        await this._dynamoClient.send(
+          new UpdateCommand({
+            TableName: 'code-push-packages',
+            Key: {
+              deploymentId,
+            },
+            UpdateExpression: 'set packages = :packages',
+            ExpressionAttributeValues: {
+              ':packages': [],
+            },
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+      })
+      .catch(() => {
+        throw storageError(ErrorCode.Other, 'Could not clear packages')
+      })
   }
 
   getPackageHistoryFromDeploymentKey(deploymentKey: string): Promise<Package[]> {
-    throw new Error('Method not implemented.')
+    return this._setupPromise
+      .then(async () => {
+        const response = await this._dynamoClient.send(
+          new QueryCommand({
+            TableName: 'code-push-packages',
+            IndexName: 'deploymentKey-index',
+            KeyConditionExpression: '#deploymentKey = :deploymentKey',
+            ExpressionAttributeNames: {
+              '#deploymentKey': 'deploymentKey',
+            },
+            ExpressionAttributeValues: {
+              ':deploymentKey': deploymentKey,
+            },
+          }),
+        )
+        if (response.Items) {
+          return response.Items[0].packages as Package[]
+        } else {
+          throw storageError(ErrorCode.Other, 'Could not get packages')
+        }
+      })
+      .catch(() => {
+        throw storageError(ErrorCode.Other, 'Could not get packages')
+      })
   }
 
   getPackageHistory(
@@ -408,7 +537,21 @@ export class DynamoStorage implements Storage {
     appId: string,
     deploymentId: string,
   ): Promise<Package[]> {
-    throw new Error('Method not implemented.')
+    return this._setupPromise.then(async () => {
+      const response = await this._dynamoClient.send(
+        new GetCommand({
+          TableName: 'code-push-packages',
+          Key: {
+            deploymentId,
+          },
+        }),
+      )
+      if (response.Item) {
+        return response.Item.packages as Package[]
+      } else {
+        throw storageError(ErrorCode.NotFound, 'Packages not found')
+      }
+    })
   }
 
   updatePackageHistory(
@@ -420,12 +563,40 @@ export class DynamoStorage implements Storage {
     throw new Error('Method not implemented.')
   }
 
-  addBlob(blobId: string, addstream: Readable, streamLength: number): Promise<string> {
-    throw new Error('Method not implemented.')
+  addBlob(blobId: string, addStream: Readable, streamLength: number, appId: string, deploymentId: string): Promise<string> {
+    return this._setupPromise.then(async () => {
+      const { appName, deploymentName } = await this.getAppAndDeploymentNames(appId, deploymentId)
+      const passThroughStream = new PassThrough()
+      const parallelUploads3 = new Upload({
+        client: this._s3Client,
+        params: {
+          Bucket: 'code-push-bundles',
+          Key: this.getS3Url(appName, deploymentName, blobId, false),
+          Body: passThroughStream,
+        },
+      })
+
+      addStream.pipe(passThroughStream)
+
+
+      parallelUploads3.on('httpUploadProgress', (progress) => {
+        console.log(progress)
+      })
+
+      await parallelUploads3.done()
+      return blobId
+    }).catch(() => {
+      throw storageError(ErrorCode.Other, 'Could not upload bundle')
+    })
   }
 
-  getBlobUrl(blobId: string): Promise<string> {
-    throw new Error('Method not implemented.')
+  getBlobUrl(blobId: string, appId: string, deploymentId: string): Promise<string> {
+    return this._setupPromise.then(async () => {
+      const { appName, deploymentName } = await this.getAppAndDeploymentNames(appId, deploymentId)
+      return this.getS3Url(appName, deploymentName, blobId, true)
+    }).catch(() => {
+      throw storageError(ErrorCode.Other, 'Could not get bundle')
+    })
   }
 
   removeBlob(blobId: string): Promise<void> {

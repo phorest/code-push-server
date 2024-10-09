@@ -517,20 +517,20 @@ function packageDiffTests(StorageType: new (...args: any[]) => storage.Storage):
       .then((packageHash: string) => {
         info.packageHash = packageHash
         var json: string = manifest.serialize()
-        return storage.addBlob(uuidv4(), utils.makeStreamFromString(json), json.length)
+        return storage.addBlob(uuidv4(), utils.makeStreamFromString(json), json.length, 'testId', 'testId')
       })
       .then((blobId: string) => {
-        return storage.getBlobUrl(blobId)
+        return storage.getBlobUrl(blobId, 'testId', 'testId')
       })
       .then((savedManifestBlobUrl: string) => {
         info.manifestBlobUrl = savedManifestBlobUrl
         return utils.getStreamAndSizeForFile(filePath)
       })
       .then((props: utils.FileProps) => {
-        return storage.addBlob(uuidv4(), props.stream, props.size)
+        return storage.addBlob(uuidv4(), props.stream, props.size, 'testId', 'testId')
       })
       .then((blobId: string) => {
-        return storage.getBlobUrl(blobId)
+        return storage.getBlobUrl(blobId, 'testId', 'testId')
       })
       .then((savedBlobUrl: string) => {
         info.blobUrl = savedBlobUrl

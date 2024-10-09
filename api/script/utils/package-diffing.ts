@@ -91,6 +91,8 @@ export class PackageDiffer {
                   newPackage.packageHash,
                   newManifest,
                   newFilePath,
+                  appId,
+                  deploymentId,
                 ),
               )
             })
@@ -240,6 +242,8 @@ export class PackageDiffer {
   private uploadDiffArchiveBlob(
     blobId: string,
     diffArchiveFilePath: string,
+    appId: string,
+    deploymentId: string
   ): Promise<storageTypes.BlobInfo> {
     return Promise<storageTypes.BlobInfo>(
       (
@@ -256,9 +260,9 @@ export class PackageDiffer {
           const readable: fs.ReadStream = fs.createReadStream(diffArchiveFilePath)
 
           this._storage
-            .addBlob(blobId, readable, stats.size)
+            .addBlob(blobId, readable, stats.size, appId, deploymentId)
             .then((blobId: string): Promise<string> => {
-              return this._storage.getBlobUrl(blobId)
+              return this._storage.getBlobUrl(blobId, appId, deploymentId)
             })
             .then((blobUrl: string): void => {
               fs.unlink(diffArchiveFilePath, (error) => {
@@ -286,6 +290,8 @@ export class PackageDiffer {
     newPackageHash: string,
     newManifest: PackageManifest,
     newFilePath: string,
+    appId: string,
+    deploymentId: string,
   ): Promise<DiffBlobInfo> {
     if (!appPackage || appPackage.packageHash === newPackageHash) {
       // If the packageHash matches, no need to calculate diff, its the same package.
@@ -301,6 +307,8 @@ export class PackageDiffer {
           return this.uploadDiffArchiveBlob(
             security.generateSecureKey(accountId),
             diffArchiveFilePath,
+            appId,
+            deploymentId,
           )
         }
 

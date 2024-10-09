@@ -980,9 +980,11 @@ export function getManagementRouter(config: ManagementConfig): Router {
               security.generateSecureKey(accountId),
               fs.createReadStream(filePath),
               stats.size,
+              appId,
+              deploymentToReleaseTo.id,
             )
           })
-          .then((blobId: string) => storage.getBlobUrl(blobId))
+          .then((blobId: string) => storage.getBlobUrl(blobId, appId, deploymentToReleaseTo.id))
           .then((blobUrl: string) => {
             restPackage.blobUrl = blobUrl
             restPackage.size = stats.size
@@ -992,14 +994,14 @@ export function getManagementRouter(config: ManagementConfig): Router {
               const json: string = newManifest.serialize()
               const readStream: stream.Readable = streamifier.createReadStream(json)
 
-              return storage.addBlob(security.generateSecureKey(accountId), readStream, json.length)
+              return storage.addBlob(security.generateSecureKey(accountId), readStream, json.length, appId, deploymentToReleaseTo.id)
             }
 
             return q(<string>null)
           })
           .then((blobId?: string) => {
             if (blobId) {
-              return storage.getBlobUrl(blobId)
+              return storage.getBlobUrl(blobId, appName, deploymentName)
             }
 
             return q(<string>null)

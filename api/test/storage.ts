@@ -277,7 +277,7 @@ function storageTests(
         })
     })
 
-    it("can update an account's provider details", () => {
+    it('can update an account\'s provider details', () => {
       var account: storageTypes.Account = utils.makeAccount()
 
       return storage
@@ -338,7 +338,7 @@ function storageTests(
   describe('App', () => {
     var account: storageTypes.Account
     var collaboratorNotFoundMessage: string =
-      "The specified e-mail address doesn't represent a registered user"
+      'The specified e-mail address doesn\'t represent a registered user'
 
     beforeEach(() => {
       account = utils.makeAccount()
@@ -1038,7 +1038,7 @@ function storageTests(
         })
     })
 
-    it("can get app and deployment ID's", () => {
+    it('can get app and deployment ID\'s', () => {
       return storage
         .getDeploymentInfo(deployment.key)
         .then((deploymentInfo: storageTypes.DeploymentInfo): void => {
@@ -1077,11 +1077,14 @@ function storageTests(
             uuidv4(),
             utils.makeStreamFromString(fileContents),
             fileContents.length,
+            app.id,
+            deployment.id,
           )
         })
         .then((savedBlobId: string) => {
           blobId = savedBlobId
-          return storage.getBlobUrl(blobId)
+          return storage.getBlobUrl(blobId, app.id,
+            deployment.id)
         })
         .then((savedBlobUrl: string) => {
           blobUrl = savedBlobUrl
@@ -1280,7 +1283,7 @@ function storageTests(
     it('can add a blob', () => {
       var fileContents = 'test stream'
       return storage
-        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length)
+        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length, 'testId', 'testId')
         .then((blobId: string) => {
           assert(blobId)
         })
@@ -1289,9 +1292,9 @@ function storageTests(
     it('can get a blob url', () => {
       var fileContents = 'test stream'
       return storage
-        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length)
+        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length, 'testId', 'testId')
         .then((blobId: string) => {
-          return storage.getBlobUrl(blobId)
+          return storage.getBlobUrl(blobId, 'testId', 'testId')
         })
         .then((blobUrl: string) => {
           assert(blobUrl)
@@ -1306,13 +1309,13 @@ function storageTests(
       var fileContents = 'test stream'
       var blobId: string
       return storage
-        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length)
+        .addBlob(uuidv4(), utils.makeStreamFromString(fileContents), fileContents.length, 'testId', 'testId')
         .then((id: string) => {
           blobId = id
           return storage.removeBlob(blobId)
         })
         .then(() => {
-          return storage.getBlobUrl(blobId)
+          return storage.getBlobUrl(blobId, 'testId', 'testId')
         })
         .then((blobUrl: string) => {
           if (!blobUrl) {
@@ -1341,6 +1344,6 @@ function storageTests(
 function failOnCallSucceeded(result: any): any {
   throw new Error(
     'Expected the promise to be rejected, but it succeeded with value ' +
-      (result ? JSON.stringify(result) : result),
+    (result ? JSON.stringify(result) : result),
   )
 }
