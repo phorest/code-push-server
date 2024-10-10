@@ -471,7 +471,7 @@ export class DynamoStorage implements Storage {
             },
             UpdateExpression: 'set packages = :packages',
             ExpressionAttributeValues: {
-              ':packages': [appPackage, ...packages],
+              ':packages': [...packages, appPackage],
             },
             ReturnValues: 'ALL_NEW',
           }),
@@ -577,11 +577,6 @@ export class DynamoStorage implements Storage {
       })
 
       addStream.pipe(passThroughStream)
-
-
-      parallelUploads3.on('httpUploadProgress', (progress) => {
-        console.log(progress)
-      })
 
       await parallelUploads3.done()
       return blobId

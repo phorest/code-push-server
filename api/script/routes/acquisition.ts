@@ -109,13 +109,13 @@ function createResponseUsingStorage(
       errorUtils.sendMalformedRequestError(
         res,
         'An update check must include a valid deployment key - please check that your app has been ' +
-          "configured correctly. To view available deployment keys, run 'code-push-standalone deployment ls <appName> -k'.",
+        'configured correctly. To view available deployment keys, run \'code-push-standalone deployment ls <appName> -k\'.',
       )
     } else if (!validationUtils.isValidAppVersionField(updateRequest.appVersion)) {
       errorUtils.sendMalformedRequestError(
         res,
-        "An update check must include a binary version that conforms to the semver standard (e.g. '1.0.0'). " +
-          'The binary version is normally inferred from the App Store/Play Store version configured with your app.',
+        'An update check must include a binary version that conforms to the semver standard (e.g. \'1.0.0\'). ' +
+        'The binary version is normally inferred from the App Store/Play Store version configured with your app.',
       )
     } else {
       errorUtils.sendMalformedRequestError(
@@ -157,8 +157,8 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
   const redisManager: redis.RedisManager = config.redisManager
   const router: express.Router = express.Router()
 
-  const updateCheck = function (newApi: boolean) {
-    return function (req: express.Request, res: express.Response, next: (err?: any) => void) {
+  const updateCheck = function(newApi: boolean) {
+    return function(req: express.Request, res: express.Response, next: (err?: any) => void) {
       const deploymentKey: string = String(req.query.deploymentKey || req.query.deployment_key)
       const key: string = redis.Utilities.getDeploymentKeyHash(deploymentKey)
       const clientUniqueId: string = String(req.query.clientUniqueId || req.query.client_unique_id)
@@ -224,7 +224,7 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
     }
   }
 
-  const reportStatusDeploy = function (
+  const reportStatusDeploy = function(
     req: express.Request,
     res: express.Response,
     next: (err?: any) => void,
@@ -324,7 +324,7 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
     }
   }
 
-  const reportStatusDownload = function (
+  const reportStatusDownload = function(
     req: express.Request,
     res: express.Response,
     next: (err?: any) => void,
