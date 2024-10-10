@@ -53,7 +53,7 @@ jobs:
           node-version: 21.1
 
       - name: Build service docker image
-        run: docker build --tag code-push-service:${GITHUB_SHA} .
+        run: docker build --tag code-push-service:${GITHUB_SHA} ./api
 
       - name: Push service image to ECR
         uses: jwalton/gh-ecr-push@v1
