@@ -1,0 +1,77 @@
+name: On code push workflow
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  push:
+    branches:
+      - "**"
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.github/**'
+    tags-ignore:
+      - "*"
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Whether to build docker image and trigger deployment (yes/no)'
+        default: 'no'
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
+        required: false
+
+permissions:
+  id-token: write
+  contents: write
+  actions: write
+  checks: write
+  deployments: write
+  discussions: write
+  issues: write
+  packages: write
+  pages: write
+  pull-requests: write
+  repository-projects: write
+  security-events: write
+  statuses: write
+
+jobs:
+  package:
+    name: Publish archives and docker images
+    if: contains(github.ref, 'main') || contains(github.event.inputs.deploy, 'yes')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 21.1
+
+      - name: Build service docker image
+        run: docker build --tag code-push-service:${GITHUB_SHA} .
+
+      - name: Push service image to ECR
+        uses: jwalton/gh-ecr-push@v1
+        with:
+          access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: ${AWS_REGION}
+          image: code-push-service:${GITHUB_SHA}
+        env:
+          AWS_REGION: eu-west-1
+
+  deploy-branch-to-dev:
+    name: Deploy ${{ github.ref }} branch to dev
+    needs: package
+    uses: ./.github/workflows/deployment-workflow.yml
+    with:
+      env: dev
+      ref: ${{ github.ref }}
+      deploymentCommand: deploy:all
+      dockerImageTag: snapshot-${{ github.sha }}
+    secrets: inherit
