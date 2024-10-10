@@ -65,13 +65,13 @@ jobs:
         env:
           AWS_REGION: eu-west-1
 
-  deploy-branch-to-dev:
-    name: Deploy ${{ github.ref }} branch to dev
-    needs: package
-    uses: ./.github/workflows/deployment-workflow.yml
-    with:
-      env: dev
-      ref: ${{ github.ref }}
-      deploymentCommand: deploy:all
-      dockerImageTag: snapshot-${{ github.sha }}
-    secrets: inherit
+#  deploy-branch-to-dev:
+#    name: Deploy ${{ github.ref }} branch to dev
+#    needs: package
+#    uses: ./.github/workflows/deployment-workflow.yml
+#    with:
+#      env: dev
+#      ref: ${{ github.ref }}
+#      deploymentCommand: deploy:all
+#      dockerImageTag: ${{ github.sha }}
+#    secrets: inherit
